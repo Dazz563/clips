@@ -4,10 +4,13 @@ import {CommonModule} from "@angular/common";
 import {UserRoutingModule} from "./user-routing.module";
 import {AuthModalComponent} from "./auth-modal/auth-modal.component";
 import {SharedModule} from "../shared/shared.module";
+import {LoginComponent} from "./login/login.component";
+import {RegisterComponent} from "./register/register.component";
+import {ReactiveFormsModule} from "@angular/forms";
 
 @NgModule({
-    declarations: [AuthModalComponent],
-    imports: [CommonModule, UserRoutingModule, SharedModule],
+    declarations: [AuthModalComponent, LoginComponent, RegisterComponent],
+    imports: [CommonModule, UserRoutingModule, SharedModule, ReactiveFormsModule],
     exports: [AuthModalComponent],
 })
 export class UserModule {}
