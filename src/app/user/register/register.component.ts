@@ -29,7 +29,6 @@ export class RegisterComponent implements OnInit {
                 validators: [Validators.required, Validators.email],
                 asyncValidators: [this.emailTaken.validate],
             }),
-            // email: new FormControl("", [this.emailTaken.validate], [this.emailTaken.validate]),
             age: new FormControl("", {
                 validators: [Validators.required, Validators.min(18), Validators.max(120)],
             }),

@@ -21,11 +21,4 @@ export class NavComponent implements OnInit {
 
         this.modal.toggleModal("auth");
     }
-
-    logout($event: Event) {
-        // Prevents anchor tags href from trying to redirect
-        $event.preventDefault();
-        // Logs user out
-        this.auth.logout();
-    }
 }

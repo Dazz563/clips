@@ -1,7 +1,9 @@
 import {Injectable} from "@angular/core";
 import {AngularFireAuth} from "@angular/fire/compat/auth";
 import {AngularFirestore, AngularFirestoreCollection} from "@angular/fire/compat/firestore";
-import {delay, map, Observable} from "rxjs";
+import {ActivatedRoute, Router, NavigationEnd} from "@angular/router";
+import {delay, map, Observable, of} from "rxjs";
+import {filter, switchMap} from "rxjs/operators";
 
 export interface UserModel {
     id?: string;
@@ -20,9 +22,13 @@ export class AuthService {
     private usersCollection: AngularFirestoreCollection<UserModel>;
     isAuthenticated$: Observable<boolean>;
     isAuthenticatedWithDelay$: Observable<boolean>;
+    private redirect = false;
+
     constructor(
         private auth: AngularFireAuth, //
-        private db: AngularFirestore
+        private db: AngularFirestore,
+        private router: Router,
+        private route: ActivatedRoute
     ) {
         this.usersCollection = db.collection("users");
         this.isAuthenticated$ = auth.user.pipe(
@@ -31,6 +37,17 @@ export class AuthService {
         this.isAuthenticatedWithDelay$ = this.isAuthenticated$.pipe(
             delay(2000) //
         );
+
+        // Filtering the events from the router
+        this.router.events
+            .pipe(
+                filter((e) => e instanceof NavigationEnd), //
+                map((e) => this.route.firstChild),
+                switchMap((route) => route?.data ?? of({}))
+            )
+            .subscribe((data) => {
+                this.redirect = data.authOnly ?? false;
+            });
     }
 
     async createUser(userData: UserModel) {
@@ -56,7 +73,14 @@ export class AuthService {
         return await this.auth.signInWithEmailAndPassword(email, password);
     }
 
-    async logout() {
-        return await this.auth.signOut();
+    async logout($event?: Event) {
+        // Prevents anchor tags href from trying to redirect
+        $event.preventDefault();
+        // Logs user out
+        await this.auth.signOut();
+
+        if (this.redirect) {
+            await this.router.navigateByUrl("/");
+        }
     }
 }
