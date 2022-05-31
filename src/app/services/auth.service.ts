@@ -1,7 +1,7 @@
 import {Injectable} from "@angular/core";
 import {AngularFireAuth} from "@angular/fire/compat/auth";
 import {AngularFirestore, AngularFirestoreCollection} from "@angular/fire/compat/firestore";
-import {map, Observable} from "rxjs";
+import {delay, map, Observable} from "rxjs";
 
 export interface UserModel {
     id?: string;
@@ -19,6 +19,7 @@ export interface UserModel {
 export class AuthService {
     private usersCollection: AngularFirestoreCollection<UserModel>;
     isAuthenticated$: Observable<boolean>;
+    isAuthenticatedWithDelay$: Observable<boolean>;
     constructor(
         private auth: AngularFireAuth, //
         private db: AngularFirestore
@@ -26,6 +27,9 @@ export class AuthService {
         this.usersCollection = db.collection("users");
         this.isAuthenticated$ = auth.user.pipe(
             map((user) => !!user) //
+        );
+        this.isAuthenticatedWithDelay$ = this.isAuthenticated$.pipe(
+            delay(2000) //
         );
     }
 
@@ -41,9 +45,18 @@ export class AuthService {
             phone_number: userData.phone_number,
         });
 
+        // This is optional as we save a users profile in the database
         await userCred.user.updateProfile({
             displayName: userData.name,
             // photoURL: userData.photo_url
         });
+    }
+
+    async login(email: string, password: string) {
+        return await this.auth.signInWithEmailAndPassword(email, password);
+    }
+
+    async logout() {
+        return await this.auth.signOut();
     }
 }
