@@ -6,4 +6,6 @@
     <p *ngIf="control.errors?.email" class="text-red-400">You must enter a valid email.</p>
     <p *ngIf="control.errors?.min" class="text-red-400">You're too young.</p>
     <p *ngIf="control.errors?.max" class="text-red-400">You should be in the grave.</p>
+    <p *ngIf="control.errors?.noMatch" class="text-red-400">Passwords do not match.</p>
+    <p *ngIf="control.errors?.emailTaken" class="text-red-400">Email taken. Please try another email.</p>
 </ng-container>
