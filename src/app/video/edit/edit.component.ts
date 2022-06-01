@@ -30,13 +30,17 @@ export class EditComponent implements OnInit, OnDestroy, OnChanges {
         private clipsService: ClipService
     ) {}
 
-    // This will check if the input is empty and on change will update the forms value
     ngOnChanges() {
+        // This will check if the input is empty and on change will update the forms value
         if (!this.activeClip) {
             return;
         }
         this.editForm.controls.clipId.setValue(this.activeClip.docId);
         this.editForm.controls.title.setValue(this.activeClip.title);
+
+        // Resets our alerts on change detection when switching to different clips
+        this.inSubmission = false;
+        this.showAlert = false;
     }
 
     ngOnInit(): void {
