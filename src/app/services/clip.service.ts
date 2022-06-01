@@ -34,7 +34,7 @@ export class ClipService {
     getUserClips() {
         // Start by retrieving the user
         return this.auth.user.pipe(
-            // switchMap to the document
+            // switchMap from user to the document
             switchMap((user) => {
                 if (!user) {
                     return of([]);
@@ -45,5 +45,11 @@ export class ClipService {
             }),
             map((snapshot) => (snapshot as QuerySnapshot<ClipModel>).docs)
         );
+    }
+
+    updateClip(id: string, title: string) {
+        return this.clipsCollection.doc(id).update({
+            title,
+        });
     }
 }
