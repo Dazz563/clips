@@ -3,7 +3,7 @@ import {AngularFirestore, AngularFirestoreCollection, DocumentReference, QuerySn
 import firebase from "firebase/compat/app";
 import {AngularFireAuth} from "@angular/fire/compat/auth";
 import {AngularFireStorage, AngularFireUploadTask} from "@angular/fire/compat/storage";
-import {map, of, switchMap} from "rxjs";
+import {BehaviorSubject, combineLatest, map, of, switchMap} from "rxjs";
 
 export class ClipModel {
     docId?: string;
@@ -33,15 +33,22 @@ export class ClipService {
         return this.clipsCollection.add(data);
     }
 
-    getUserClips() {
+    getUserClips(sort$: BehaviorSubject<string>) {
         // Start by retrieving the user
-        return this.auth.user.pipe(
+        return combineLatest([this.auth.user, sort$]).pipe(
             // switchMap from user to the document
-            switchMap((user) => {
+            switchMap((values) => {
+                const [user, sort] = values;
                 if (!user) {
                     return of([]);
                 }
-                const query = this.clipsCollection.ref.where("uid", "==", user.uid);
+                const query = this.clipsCollection.ref
+                    .where(
+                        "uid",
+                        "==",
+                        user.uid //
+                    )
+                    .orderBy("timestamp", sort == "1" ? "desc" : "asc");
 
                 return query.get();
             }),

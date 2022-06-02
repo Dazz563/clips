@@ -1,5 +1,6 @@
 import {Component, OnInit} from "@angular/core";
 import {ActivatedRoute, Params, Router} from "@angular/router";
+import {BehaviorSubject} from "rxjs";
 import {ClipModel, ClipService} from "src/app/services/clip.service";
 import {ModalService} from "src/app/services/modal.service";
 
@@ -13,6 +14,9 @@ export class ManageComponent implements OnInit {
     clips: ClipModel[] = [];
     activeClip: ClipModel | null = null;
 
+    // Tracks the sort order from recent to oldest
+    sort$ = new BehaviorSubject<string>(this.videoOrder);
+
     constructor(
         private router: Router, //
         private route: ActivatedRoute,
@@ -23,8 +27,9 @@ export class ManageComponent implements OnInit {
     ngOnInit(): void {
         this.route.queryParams.subscribe((params: Params) => {
             this.videoOrder = params.sort === "2" ? params.sort : "1";
+            this.sort$.next(this.videoOrder);
         });
-        this.clipsService.getUserClips().subscribe((docs) => {
+        this.clipsService.getUserClips(this.sort$).subscribe((docs) => {
             this.clips = [];
 
             docs.forEach((doc) => {
