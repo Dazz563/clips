@@ -30,6 +30,8 @@ export class UploadComponent implements OnDestroy {
     showPercentage = false;
     // User info
     user: firebase.User | null = null;
+    // Screenshots
+    screenshots: string[] = [];
 
     uploadForm = new FormGroup({
         title: new FormControl("", {
@@ -55,7 +57,10 @@ export class UploadComponent implements OnDestroy {
         this.task?.cancel();
     }
 
-    storeFile($event: Event) {
+    async storeFile($event: Event) {
+        if (this.ffmpegService.isRunning) {
+            return;
+        }
         this.isDragOver = false;
 
         // Selects the file from the drag/input event
@@ -67,6 +72,8 @@ export class UploadComponent implements OnDestroy {
             return;
         }
         console.log(this.file);
+        // ffmpeg service to get screen shots
+        this.screenshots = await this.ffmpegService.getScreenshots(this.file);
         // Set the forms value and removes the files extension from the name
         this.uploadForm.get("title").setValue(this.file.name.replace(/\.[^/.]+$/, ""));
         // Shows form after correct file has been detected
