@@ -1,13 +1,14 @@
 import {Component, OnDestroy, OnInit} from "@angular/core";
 import {AngularFireStorage, AngularFireUploadTask} from "@angular/fire/compat/storage";
 import {FormControl, FormGroup, Validators} from "@angular/forms";
-import {last, switchMap} from "rxjs/operators";
+import {switchMap} from "rxjs/operators";
 import {v4 as uuid} from "uuid";
 import {AngularFireAuth} from "@angular/fire/compat/auth";
 import firebase from "firebase/compat/app";
 import {ClipService} from "src/app/services/clip.service";
 import {Router} from "@angular/router";
 import {FfmpegService} from "src/app/services/ffmpeg.service";
+import {combineLatest, forkJoin} from "rxjs";
 
 @Component({
     selector: "app-upload",
@@ -24,14 +25,17 @@ export class UploadComponent implements OnDestroy {
     alertColor = "blue";
     alertMsg = "Please wait! Your clip is being uploaded";
     inSubmission = false;
-    // Upload Progress
+    // Upload Video Progress
     task?: AngularFireUploadTask;
     percentage = 0;
     showPercentage = false;
+    //Upload picture
+    screenshotTask?: AngularFireUploadTask;
     // User info
     user: firebase.User | null = null;
     // Screenshots
     screenshots: string[] = [];
+    selectedScreenshot = "";
 
     uploadForm = new FormGroup({
         title: new FormControl("", {
@@ -74,13 +78,15 @@ export class UploadComponent implements OnDestroy {
         console.log(this.file);
         // ffmpeg service to get screen shots
         this.screenshots = await this.ffmpegService.getScreenshots(this.file);
+        // Update selected screenshot
+        this.selectedScreenshot = this.screenshots[0];
         // Set the forms value and removes the files extension from the name
         this.uploadForm.get("title").setValue(this.file.name.replace(/\.[^/.]+$/, ""));
         // Shows form after correct file has been detected
         this.nextStep = true;
     }
 
-    uploadFile() {
+    async uploadFile() {
         // Disable form (in the case the title is empty or has errors)
         this.uploadForm.disable();
         // Alert (we resubmit the value in case it fails)
@@ -90,31 +96,52 @@ export class UploadComponent implements OnDestroy {
         this.inSubmission = true;
         this.showPercentage = true;
 
-        // Create file name for DB
+        // Create video file name for DB
         const clipFileName = uuid();
         const clipPath = `clips/${clipFileName}.mp4`;
+        // Creating Blob to send to firebase on picture select
+        const screenshotBlob = await this.ffmpegService.blobFromURL(this.selectedScreenshot);
+        const screenshotPath = `screenshots/${clipFileName}.png`;
+
+        this.screenshotTask = this.storage.upload(screenshotPath, screenshotBlob);
+        const screenshotRef = this.storage.ref(screenshotPath);
         // Send file to FB
         this.task = this.storage.upload(clipPath, this.file);
         // Video URL
         const clipRef = this.storage.ref(clipPath);
         // Upload progress
-        this.task.percentageChanges().subscribe((progress) => {
-            this.percentage = (progress as number) / 100;
+        combineLatest([
+            this.task.percentageChanges(), //
+            this.screenshotTask.percentageChanges(),
+        ]).subscribe((progress) => {
+            const [clipProgress, screenshotProgress] = progress;
+
+            if (!clipProgress || !screenshotProgress) {
+                return;
+            }
+            const total = clipProgress + screenshotProgress;
+            this.percentage = (total as number) / 200;
         });
-        this.task
-            .snapshotChanges()
+        forkJoin([this.task.snapshotChanges(), this.screenshotTask.snapshotChanges()])
             .pipe(
-                last(), //
-                switchMap(() => clipRef.getDownloadURL())
+                switchMap(() =>
+                    forkJoin([
+                        clipRef.getDownloadURL(), //
+                        screenshotRef.getDownloadURL(),
+                    ])
+                )
             )
             .subscribe({
-                next: async (url) => {
+                next: async (urls) => {
+                    const [clipURL, screenshotURL] = urls;
                     const clip = {
                         uid: this.user?.uid,
                         displayName: this.user?.displayName,
                         title: this.uploadForm.value.title,
                         fileName: `${clipFileName}.mp4`,
-                        url,
+                        url: clipURL,
+                        screenshotURL,
+                        screenshotFileName: `${clipFileName}.png`,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     };
                     console.log(clip);
