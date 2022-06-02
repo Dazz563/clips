@@ -12,7 +12,9 @@ export class ClipModel {
     title: string;
     fileName: string;
     url: string;
+    screenshotURL: string;
     timestamp: firebase.firestore.FieldValue;
+    screenshotFileName: string;
 }
 
 @Injectable({
@@ -63,9 +65,12 @@ export class ClipService {
     }
 
     async deleteClip(clip: ClipModel) {
-        // Delete clip from storage
+        // Create ref for deletion
         const clipRef = this.storage.ref(`clips/${clip.fileName}`);
+        const screenshotRef = this.storage.ref(`screenshots/${clip.screenshotFileName}`);
+        // Delete clip from storage
         await clipRef.delete();
+        await screenshotRef.delete();
 
         // Delete clip from DB
         await this.clipsCollection.doc(clip.docId).delete();
