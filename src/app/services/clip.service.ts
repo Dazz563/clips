@@ -3,7 +3,7 @@ import {AngularFirestore, AngularFirestoreCollection, DocumentReference, QuerySn
 import firebase from "firebase/compat/app";
 import {AngularFireAuth} from "@angular/fire/compat/auth";
 import {AngularFireStorage, AngularFireUploadTask} from "@angular/fire/compat/storage";
-import {BehaviorSubject, combineLatest, map, of, switchMap} from "rxjs";
+import {BehaviorSubject, combineLatest, lastValueFrom, map, of, switchMap} from "rxjs";
 
 export class ClipModel {
     docId?: string;
@@ -22,6 +22,8 @@ export class ClipModel {
 })
 export class ClipService {
     clipsCollection: AngularFirestoreCollection<ClipModel>;
+    pageClips: ClipModel[] = [];
+    pendingReq = false;
 
     constructor(
         private db: AngularFirestore, //
@@ -74,5 +76,37 @@ export class ClipService {
 
         // Delete clip from DB
         await this.clipsCollection.doc(clip.docId).delete();
+    }
+
+    // INFINITE SCROLL with Firebase
+    async getClips() {
+        if (this.pendingReq) {
+            return;
+        }
+
+        this.pendingReq = true;
+        let query = this.clipsCollection.ref //
+            .orderBy("timestamp", "desc")
+            .limit(6);
+
+        const {length} = this.pageClips;
+
+        if (length) {
+            const lastDocId = this.pageClips[length - 1].docId;
+            const lastDoc = await lastValueFrom(this.clipsCollection.doc(lastDocId).get());
+
+            query = query.startAfter(lastDoc);
+        }
+        const snapshot = await query.get();
+
+        snapshot.forEach((doc) => {
+            this.pageClips.push({
+                docId: doc.id,
+                ...doc.data(),
+            });
+        });
+        console.log("pageclips: ", this.pageClips);
+
+        this.pendingReq = false;
     }
 }
